@@ -226,27 +226,29 @@ h2 {
         'BONUS2025': 1000
     };
 
-    let gameState = {
-        balance: 0,
-        ownedSkins: ['Гамид', 'Сырный соус', 'Фон №1'],
-        equipped: {
-            character: 'Гамид',
-            item: 'Сырный соус',
-            background: 'Фон №1'
-        }
-    };
+    const defaultGameState = {
+    balance: 0,
+    ownedSkins: ['Гамид', 'Сырный соус', 'Фон №1'],
+    equipped: {
+        character: 'Гамид',
+        item: 'Сырный соус',
+        background: 'Фон №1'
+    }
+};
+
 
     function loadGameState() {
-    const saved = localStorage.getItem('gameState');
-    if (saved) {
-        gameState = JSON.parse(saved);
-    } else {
-        gameState = { ...defaultGameState };
+        const saved = localStorage.getItem('gameState');
+        if (saved) {
+            gameState = JSON.parse(saved);
+        } else {
+            gameState = { ...defaultGameState };
+        }
+
+        const used = localStorage.getItem('usedPromoCodes');
+        if (used) usedPromoCodes = JSON.parse(used);
     }
 
-    const used = localStorage.getItem('usedPromoCodes');
-    if (used) usedPromoCodes = JSON.parse(used);
-}
 function saveGameState() {
     localStorage.setItem('gameState', JSON.stringify(gameState));
     localStorage.setItem('usedPromoCodes', JSON.stringify(usedPromoCodes));
