@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Падающие предметы</title>
+  <style>
+body {
+  margin: 0;
+  padding: 0;
+  font-family: "Arial", sans-serif;
+  background: #ffffff;
+  color: #222;
+  overflow: hidden;
+}
+
+#gameCanvas {
+  display: none;
+  width: 100vw;
+  height: 100vh;
+}
+
+/* Главное меню */
+#menu {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+  text-align: center;
+}
+
+#menu button {
+  padding: 14px 30px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  background: #ff6600;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: 0.3s ease;
+  margin: 10px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+}
+
+#menu button:hover {
+  background: #cc5500;
+  transform: scale(1.05);
+}
+
+/* Магазин */
+#shop {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgb(255, 255, 255);
+  color: rgb(0, 0, 0);
+  overflow-y: auto;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+#redeem-button {
+    background-color: #ff6600 !important;;
+    color: white !important; 
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.2s;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+#redeem-button:hover {
+    background-color: #ff6600;
+    transform: scale(1.05);
+}
+
+
+#shop button {
+  background: #00703c;
+  color: rgb(255, 255, 255);
+  border: none;
+  padding: 10px 18px;
+  margin: 8px 5px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: 0.3s;
+}
+
+
+#shop button:hover {
+  background: #005a30;
+  transform: scale(1.05);
+}
+
+#balance {
+  font-weight: bold;
+  font-size: 1.2rem;
+  color: #ff6600;
+}
+
+#promoInput {
+  padding: 10px;
+  border: 2px solid #ff6600;
+  border-radius: 10px;
+  outline: none;
+  margin-top: 10px;
+  font-size: 16px;
+  width: 200px;
+  transition: 0.3s;
+}
+
+#promoInput:focus {
+  border-color: #d13329;
+  box-shadow: 0 0 10px rgba(209, 51, 41, 0.5);
+}
+
+/* Секции магазина */
+.shop-section {
+  background: rgba(50, 50, 50, 0.1);
+  margin-top: 30px;
+  padding: 20px;
+  border-radius: 16px;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+
+h2 {
+  font-size: 24px;
+  color: #00703c;
+  margin-bottom: 20px;
+}
+
+/* Скины */
+.skin-item {
+  display: inline-block;
+  margin: 15px;
+  cursor: pointer;
+  position: relative;
+  background: rgba(50, 50, 50, 0.1);
+  border-radius: 12px;
+  padding: 10px;
+  transition: transform 0.2s;
+  font-weight: bold;
+  color: #005a30;
+}
+
+.skin-item:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+}
+
+.skin-item img {
+  width: 100px;
+  height: 100px;
+  border-radius: 10px;
+}
+
+.skin-item.equipped {
+  border: 3px solid #ff6600;
+}
+
+.checkmark {
+  display: none;
+  position: absolute;
+  top: 5px;
+  right: 8px;
+  font-size: 22px;
+  color: #ff6600;
+ 
+}
+
+.skin-item.owned .checkmark {
+  display: block;
+
+}
+
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+
+  <div id="menu">
+    <h2>SauseUp</h2>
+    <button onclick="startGame()">Играть</button>
+    <button onclick="openShop()">Магазин</button>
+  </div>
+
+  <div id="shop">
+    <button onclick="closeShop()">Выход</button>
+    <div>Баланс: <span id="balance">0</span>р</div>
+    <input id="promoInput" type="text" placeholder="Введите промокод" />
+    <button id="redeem-button" onclick="redeemPromo()">Активировать</button>
+    <button onclick="scrollToSection('characters')">Персонажи</button>
+    <button onclick="scrollToSection('items')">Предметы</button>
+    <button onclick="scrollToSection('backgrounds')">Фон</button>
+
+    <div id="characters" class="shop-section"></div>
+    <div id="items" class="shop-section"></div>
+    <div id="backgrounds" class="shop-section"></div>
+
+    <button onclick="resetProgress()">Сбросить прогресс</button>
+  </div>
+
+  <script>
+    // Конфигурация скинов
+    const skins = {
+        'Гамид': { type: 'character', price: 0 , image: 'skins/heroes/gamid.png' },
+        'Сырный соус': { type: 'item', price: 0, image: 'skins/item/cheese-sauce.png' },
+        'Фон №1': { type: 'background', price: 0, image: 'skins/bg/bg1.png' },
+    };
+
+    const promoCodes = {
+        'FREEMONEY': 500,
+        'BONUS2025': 1000
+    };
+
+    let gameState = {
+        balance: 0,
+        ownedSkins: ['Гамид', 'Сырный соус', 'Фон №1'],
+        equipped: {
+            character: 'Гамид',
+            item: 'Сырный соус',
+            background: 'Фон №1'
+        }
+    };
+
+    function loadGameState() {
+    const saved = localStorage.getItem('gameState');
+    if (saved) {
+        gameState = JSON.parse(saved);
+    } else {
+        gameState = { ...defaultGameState };
+    }
+
+    const used = localStorage.getItem('usedPromoCodes');
+    if (used) usedPromoCodes = JSON.parse(used);
+}
+function saveGameState() {
+    localStorage.setItem('gameState', JSON.stringify(gameState));
+    localStorage.setItem('usedPromoCodes', JSON.stringify(usedPromoCodes));
+    updateBalanceDisplay();
+    updateShop();
+}
+
+
+    function updateBalanceDisplay() {
+        document.getElementById('balance').textContent = gameState.balance;
+    }
+
+    function updateShop() {
+        const sections = {
+            characters: document.getElementById('characters'),
+            items: document.getElementById('items'),
+            backgrounds: document.getElementById('backgrounds')
+        };
+
+        for (let section in sections) {
+            sections[section].innerHTML = `<h2>${section.charAt(0).toUpperCase() + section.slice(1)}</h2>`;
+            for (let skinId in skins) {
+                if (skins[skinId].type === section.slice(0, -1)) {
+                    const skin = skins[skinId];
+                    const owned = gameState.ownedSkins.includes(skinId);
+                    const equipped = gameState.equipped[skin.type] === skinId;
+
+                    const item = document.createElement('div');
+                    item.className = 'skin-item' + (owned ? ' owned' : '');
+                    item.className += equipped ? ' equipped' : '';
+
+                    item.innerHTML = `
+                        <img src="${skin.image}" alt="${skinId}">
+                        <div>${skinId} (${skin.price}р)</div>
+                        <div class="checkmark" style="${equipped ? 'display:block' : ''}">✔</div>
+                    `;
+                    item.onclick = () => handleSkinClick(skinId, skin);
+                    sections[section].appendChild(item);
+                }
+            }
+        }
+    }
+
+    function handleSkinClick(skinId, skin) {
+        if (gameState.ownedSkins.includes(skinId)) {
+            gameState.equipped[skin.type] = skinId;
+            saveGameState();
+        } else {
+            if (confirm(`Купить ${skinId} за ${skin.price}р?`)) {
+                if (gameState.balance >= skin.price) {
+                    gameState.balance -= skin.price;
+                    gameState.ownedSkins.push(skinId);
+                    gameState.equipped[skin.type] = skinId;
+                    saveGameState();
+                } else {
+                    alert('Недостаточно средств!');
+                }
+            }
+        }
+    }
+
+    function scrollToSection(section) {
+        document.getElementById(section).scrollIntoView({ behavior: 'smooth' });
+    }
+    let usedPromoCodes = [];
+
+    function redeemPromo() {
+        const code = document.getElementById('promoInput').value.trim();
+        if (usedPromoCodes.includes(code)) {
+            alert('Промокод уже использован!');
+            return;
+        }
+        if (promoCodes[code]) {
+            gameState.balance += promoCodes[code];
+            usedPromoCodes.push(code);
+            saveGameState();
+            alert(`Промокод активирован! Получено ${promoCodes[code]}р`);
+            document.getElementById('promoInput').value = '';
+        } else {
+            alert('Неверный промокод!');
+        }
+    }
+
+
+    function resetProgress() {
+        if (confirm('Сбросить весь прогресс? Это действие нельзя отменить!')) {
+            gameState = {
+                balance: 0,
+                ownedSkins: ['default_char', 'default_item', 'default_bg'],
+                equipped: {
+                    character: 'default_char',
+                    item: 'default_item',
+                    background: 'default_bg'
+                }
+            };
+            saveGameState();
+            alert('Прогресс сброшен!');
+        }
+    }
+
+    function openShop() {
+        document.getElementById('menu').style.display = 'none';
+        document.getElementById('shop').style.display = 'block';
+        loadGameState();
+        updateBalanceDisplay();
+        updateShop();
+    }
+
+    function closeShop() {
+        document.getElementById('shop').style.display = 'none';
+        document.getElementById('menu').style.display = 'block';
+    }
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    let gameRunning = false;
+    let score = 0;
+    let fallSpeed = 2;
+    let objects = [];
+    let playerFacingRight = true;
+
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    let images = {};
+    function loadImages(callback) {
+        let loaded = 0;
+        const total = Object.keys(skins).length;
+        for (let skinId in skins) {
+            images[skinId] = new Image();
+            images[skinId].src = skins[skinId].image;
+            images[skinId].onload = () => {
+                loaded++;
+                if (loaded === total) callback();
+            };
+        }
+    }
+
+    class FallingObject {
+        constructor() {
+            this.side = Math.random() < 0.5 ? 'left' : 'right';
+            this.x = this.side === 'left' ? canvas.width / 4 : 3 * canvas.width / 4;
+            this.y = -50;
+            this.width = 50;
+            this.height = 50;
+        }
+
+        update() {
+            this.y += fallSpeed;
+        }
+
+        draw() {
+            ctx.drawImage(
+                images[gameState.equipped.item],
+                this.x - this.width / 2,
+                this.y - this.height / 2,
+                this.width,
+                this.height
+            );
+        }
+    }
+
+    function startGame() {
+        loadImages(() => {
+            document.getElementById('menu').style.display = 'none';
+            canvas.style.display = 'block';
+            gameRunning = true;
+            score = 0;
+            fallSpeed = 2;
+            objects = [];
+            spawnObject();
+            gameLoop();
+        });
+    }
+
+    function spawnObject() {
+        if (gameRunning) {
+            objects.push(new FallingObject());
+            setTimeout(spawnObject, Math.random() * 2000 + 1000);
+        }
+    }
+
+    canvas.addEventListener('click', (e) => {
+        if (gameRunning) {
+            const clickX = e.clientX;
+            playerFacingRight = clickX > canvas.width / 2;
+        }
+    });
+
+    function gameLoop() {
+        if (!gameRunning) return;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // фон
+        ctx.drawImage(images[gameState.equipped.background], 0, 0, canvas.width, canvas.height);
+
+        fallSpeed += 0.001;
+
+        objects = objects.filter(obj => {
+    obj.update();
+    obj.draw();
+
+    if (obj.y > canvas.height - 150) { // нижняя граница ловли
+        if (
+            (obj.side === 'right' && playerFacingRight) ||
+            (obj.side === 'left' && !playerFacingRight)
+        ) {
+            score += 5;
+            return false; // предмет пойман, убираем его
+        } else {
+            endGame();
+            return false; // игра окончена
+        }
+    }
+
+    return obj.y < canvas.height + 50; // оставить объект, если он ещё не упал
+});
+
+
+        // игрок
+        ctx.save();
+        if (!playerFacingRight) {
+            ctx.scale(-1, 1);
+            ctx.drawImage(images[gameState.equipped.character], -canvas.width / 2 - 50, canvas.height - 150, 150, 150);
+        } else {
+            ctx.drawImage(images[gameState.equipped.character], canvas.width / 2 - 50, canvas.height - 150, 150, 150);
+        }
+        ctx.restore();
+
+        ctx.fillStyle = 'white';
+        ctx.font = '24px Arial';
+        ctx.fillText(`Счет: ${score}р`, 10, 30);
+
+        requestAnimationFrame(gameLoop);
+    }
+
+    function endGame() {
+        gameRunning = false;
+        gameState.balance += score;
+        saveGameState();
+        alert(`Игра окончена! Вы заработали ${score}р`);
+        canvas.style.display = 'none';
+        document.getElementById('menu').style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
